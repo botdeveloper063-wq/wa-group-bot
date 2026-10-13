@@ -9,7 +9,7 @@ app.get('/', (req, res) => res.send('Bot is running! Check Render logs for pairi
 app.listen(PORT, () => console.log(`Web server running on port ${PORT}`))
 
 async function startBot() {
-    const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys')
+    const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys2')
     const { version } = await fetchLatestBaileysVersion()
 
     const sock = makeWASocket({
