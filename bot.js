@@ -1,23 +1,24 @@
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, downloadMediaMessage } = require('@whiskeysockets/baileys')
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys')
 const P = require('pino')
 const yts = require('yt-search')
 const ytdl = require('ytdl-core')
 const fs = require('fs')
+const readline = require('readline')
 
-// ===== PUT YOUR NUMBER HERE =====
-const OWNERS = ["2348073391123@s.whatsapp.net"] // <-- CHANGE THIS TO YOUR NUMBER
-// Example: 23407083192726@s.whatsapp.net
+const OWNERS = ["23407083192726@s.whatsapp.net"] // CHANGE TO YOUR NUMBER
+
+function ask(q){ const rl=readline.createInterface({input:process.stdin,output:process.stdout}); return new Promise(res=>rl.question(q,ans=>{rl.close();res(ans)})) }
 
 async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState('auth')
-
-  const sock = makeWASocket({
-    logger: P({ level: 'silent' }),
-    auth: state,
-    printQRInTerminal: true
-  })
-
+  const sock = makeWASocket({ logger: P({ level: 'silent' }), auth: state, printQRInTerminal: false, browser: ["Ubuntu","Chrome","20.0"] })
   sock.ev.on('creds.update', saveCreds)
+
+  if (!sock.authState.creds.registered) {
+    const num = await ask("Enter your WhatsApp number with country code (ex 2348123456789): ")
+    const code = await sock.requestPairingCode(num.trim())
+    console.log(`\nYOUR PAIRING CODE: ${code}\n\nGo to WhatsApp > Linked Devices > Link with phone number > Enter code: ${code}\n`)
+  }
 
   sock.ev.on('connection.update', (update) => {
     const { connection, lastDisconnect } = update
@@ -32,32 +33,16 @@ async function startBot() {
   sock.ev.on('messages.upsert', async ({ messages }) => {
     const m = messages[0]
     if (!m.message || m.key.fromMe) return
-
     const from = m.key.remoteJid
     const isGroup = from.endsWith('@g.us')
-    const sender = isGroup? m.key.participant : from
     const body = m.message.conversation || m.message.extendedTextMessage?.text || m.message.imageMessage?.caption || ''
-
     if (!body.startsWith('.')) return
     const args = body.slice(1).trim().split(/ +/)
     const command = args.shift().toLowerCase()
 
-    // HELP / MENU
     if (command === 'menu' || command === 'help') {
-      await sock.sendMessage(from, { text: `*WA GROUP BOT MENU* 🤖
-
-.meme
-.play <song name>
-.tagall
-.kick @user
-.promote @user
-.demote @user
-.link - get group link
-.hidetag <msg>
-*Owner only* - restart bot` })
+      await sock.sendMessage(from, { text: `*WA GROUP BOT MENU* 🤖\n\n.meme\n.play <song>\n.tagall\n.kick @user\n.link\n.hidetag <msg>` })
     }
-
-    // TAG ALL
     if (command === 'tagall') {
       if (!isGroup) return
       const metadata = await sock.groupMetadata(from)
@@ -65,8 +50,6 @@ async function startBot() {
       let text = args.join(' ') || 'Attention Everyone 📢\n\n'
       await sock.sendMessage(from, { text: text, mentions: participants })
     }
-
-    // PLAY / SONG
     if (command === 'play' || command === 'song') {
       if (!args[0]) return sock.sendMessage(from, { text: 'Give song name. Ex:.play calm down' })
       try {
@@ -81,12 +64,8 @@ async function startBot() {
         write.on('finish', async () => {
           await sock.sendMessage(from, { audio: fs.readFileSync(fileName), mimetype: 'audio/mpeg' }, { quoted: m })
         })
-      } catch (e) {
-        await sock.sendMessage(from, { text: 'Error downloading song' })
-      }
+      } catch (e) { await sock.sendMessage(from, { text: 'Error downloading song' }) }
     }
-
-    // KICK
     if (command === 'kick') {
       if (!isGroup) return
       const mentioned = m.message.extendedTextMessage?.contextInfo?.mentionedJid
@@ -94,8 +73,6 @@ async function startBot() {
       await sock.groupParticipantsUpdate(from, mentioned, 'remove')
       await sock.sendMessage(from, { text: 'Kicked ✅' })
     }
-
-    // GET LINK
     if (command === 'link') {
       if (!isGroup) return
       const code = await sock.groupInviteCode(from)
@@ -103,5 +80,4 @@ async function startBot() {
     }
   })
 }
-
 startBot()
