@@ -3,11 +3,9 @@ const P = require('pino')
 const yts = require('yt-search')
 const ytdl = require('ytdl-core')
 const fs = require('fs')
-const readline = require('readline')
 
-const OWNERS = ["23407083192726@s.whatsapp.net"] // CHANGE TO YOUR NUMBER
-
-function ask(q){ const rl=readline.createInterface({input:process.stdin,output:process.stdout}); return new Promise(res=>rl.question(q,ans=>{rl.close();res(ans)})) }
+const OWNERS = ["23407083192726@s.whatsapp.net"]
+const PAIR_NUMBER = "2347083192726" // YOUR NUMBER WITHOUT @ - SAME AS OWNER, NO SPACES
 
 async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState('auth')
@@ -15,9 +13,10 @@ async function startBot() {
   sock.ev.on('creds.update', saveCreds)
 
   if (!sock.authState.creds.registered) {
-    const num = await ask("Enter your WhatsApp number with country code (ex 2348123456789): ")
-    const code = await sock.requestPairingCode(num.trim())
-    console.log(`\nYOUR PAIRING CODE: ${code}\n\nGo to WhatsApp > Linked Devices > Link with phone number > Enter code: ${code}\n`)
+    try {
+      const code = await sock.requestPairingCode(PAIR_NUMBER)
+      console.log(`\n\n========================================\nYOUR PAIRING CODE: ${code}\n========================================\n\nGo to WhatsApp > Linked Devices > Link a device > Link with phone number instead > Enter: ${code}\n\n`)
+    } catch(e){ console.log("Failed to get pairing code", e) }
   }
 
   sock.ev.on('connection.update', (update) => {
@@ -41,7 +40,7 @@ async function startBot() {
     const command = args.shift().toLowerCase()
 
     if (command === 'menu' || command === 'help') {
-      await sock.sendMessage(from, { text: `*WA GROUP BOT MENU* 🤖\n\n.meme\n.play <song>\n.tagall\n.kick @user\n.link\n.hidetag <msg>` })
+      await sock.sendMessage(from, { text: `*WA GROUP BOT MENU* 🤖\n\n.meme\n.play <song>\n.tagall - tag all members\n.kick @user\n.link - group link\n.hidetag <msg>` })
     }
     if (command === 'tagall') {
       if (!isGroup) return
