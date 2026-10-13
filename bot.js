@@ -1,3 +1,8 @@
+const express = require('express');
+const app = express();
+app.get('/', (req,res) => res.send('Bot is alive ✅'));
+app.listen(process.env.PORT || 10000, () => console.log('Server ready'));
+
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys')
 const P = require('pino')
 const yts = require('yt-search')
